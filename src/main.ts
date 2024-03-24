@@ -1,0 +1,104 @@
+import type {MessageData, PeerEventMap, ShipData} from './data'
+import {Peer, Signaling, Message, Channel} from './data'
+import {World, type Ship} from './entities'
+import {control} from './utils'
+import {configToken} from './config'
+import {use} from './data/di'
+import './style.scss'
+
+let ship: Ship
+let channel: Channel
+let peer: Peer<PeerEventMap>
+let id = crypto.randomUUID()
+
+const config = use(configToken)
+
+const world = new World(config.ctx)
+
+const signaling = use(Signaling<MessageData>)
+
+function init() {
+  // debugger
+  peer = use(Peer<PeerEventMap>)
+
+  peer.on('candidate', (candidate) => {
+    signaling.emit(new Message({candidate}))
+  })
+
+  peer.on('negotiate', async () => {
+    await peer.setLocal()
+    signaling.emit(new Message({description: peer.local}))
+  })
+
+  peer.createChannel('chat', {negotiated: true, id: 0})
+
+  peer.on('open', (c) => {
+    channel = new Channel(c)
+
+    ship = world.createShip(id)
+
+    ship.nickname = localStorage.getItem('nickname') ?? undefined
+    if (ship.nickname) nickname.value = ship.nickname
+
+    ship.color = localStorage.getItem('color') ?? ship.color
+    color.value = ship.color
+
+    control(ship.control)
+
+    channel.on<ShipData>((data) => {
+      world.moveShip(data)
+    })
+
+    channel.send(ship)
+  })
+}
+
+signaling.on(async ({description, candidate}) => {
+  try {
+    if (description) {
+      await peer.setRemote(description)
+
+      // if we got an offer, we need to reply with an answer
+      if (description.type == 'offer') {
+        await peer.setLocal()
+        const description = peer.local
+        signaling.emit(new Message({description}))
+      }
+    } else if (candidate) {
+      await peer.addCandidate(candidate)
+    }
+  } catch (err) {
+    console.error(err)
+  }
+})
+
+function animate() {
+  requestAnimationFrame(animate)
+
+  world.update()
+
+  if (channel && channel.state === 'open' && ship) {
+    channel.send(ship)
+  }
+  if (signaling.readyState && !peer) {
+    init()
+  }
+}
+
+animate()
+
+onresize = () => world.resize()
+
+nickname.oninput = () => {
+  if (ship) {
+    ship.nickname = nickname.value
+    localStorage.setItem('nickname', nickname.value)
+  }
+}
+
+color.oninput = () => {
+  if (ship) {
+    ship.color = color.value
+    localStorage.setItem('color', color.value)
+  }
+}
