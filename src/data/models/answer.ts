@@ -1,5 +1,5 @@
 export class Answer extends RTCSessionDescription {
-  constructor({sdp}: Omit<RTCSessionDescriptionInit, 'type'> = {}) {
+  constructor({sdp}: Pick<RTCSessionDescriptionInit, 'sdp'> = {}) {
     super({type: 'answer', sdp})
   }
 }

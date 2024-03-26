@@ -52,6 +52,29 @@ export class Vector2 {
     return this
   }
 
+  divideScalar(n: number) {
+    if (n) {
+      this.x /= n
+      this.y /= n
+    } else {
+      this.set(0, 0)
+    }
+
+    return this
+  }
+
+  length() {
+    return Math.sqrt(this.lengthSq())
+  }
+
+  lengthSq() {
+    return this.x * this.x + this.y * this.y
+  }
+  
+  normalize() {
+    return this.divideScalar(this.length())
+  }
+
   cross({x, y}: Vector2) {
     return this.x * y - this.y * x
   }

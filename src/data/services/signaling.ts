@@ -1,4 +1,4 @@
-import type {Callback, MessageData} from '../interfaces'
+import type {MessageData} from '../interfaces'
 import type {Message} from '../models/message'
 
 export abstract class Signaling<D> {

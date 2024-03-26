@@ -86,6 +86,15 @@ export class World {
           const distance = bullet.position.distanceTo(ship.position)
           if (bullet.origin !== ship.id && distance < ship.size.y) {
             --ship.health
+
+            const oppositeDirection = ship.position
+              .clone()
+              .sub(bullet.position)
+              .normalize()
+
+            const forceMagnitude = 0.3
+
+            ship.velocity.add(oppositeDirection.multiplyScalar(forceMagnitude))
           }
         }
 

@@ -1,68 +1,61 @@
-import type {Callback, PeerEventMap} from '../interfaces'
+import type {PeerEventMap} from '../interfaces'
+import {EventMap, bind} from '../../utils'
+import {Answer} from './answer'
+import {Offer} from './offer'
 
-export class Peer<T extends PeerEventMap> extends RTCPeerConnection {
-  #events = new Map()
+export class Peer<T extends PeerEventMap> extends EventMap<T> {
+  constructor(private connection: RTCPeerConnection) {
+    super()
 
-  constructor(configuration: RTCConfiguration = {}) {
-    super(configuration)
-
-    this.onicecandidate = ({candidate}) => {
-      if (candidate) this.#emitEvent('candidate', candidate)
+    this.connection.onicecandidate = ({candidate}) => {
+      if (candidate) this.emit('candidate', candidate)
     }
 
-    this.ontrack = (event) => {
-      this.#emitEvent('track', event)
+    this.connection.ontrack = (event) => {
+      this.emit('track', event)
     }
 
-    this.onnegotiationneeded = () => {
-      this.#emitEvent('negotiate')
+    this.connection.onnegotiationneeded = () => {
+      this.emit('negotiate')
     }
   }
 
-  createChannel(name: string, init?: RTCDataChannelInit) {
-    const channel = super.createDataChannel(name, init)
+  collectOffer(options?: RTCOfferOptions) {
+    return this.connection
+      .createOffer(options)
+      .then(this.setLocal)
+      .then(bind(Offer))
+  }
+
+  collectAnswer(options?: RTCAnswerOptions) {
+    return this.connection
+      .createAnswer(options)
+      .then(this.setLocal)
+      .then(bind(Answer))
+  }
+
+  prepareChannel(name: string, init?: RTCDataChannelInit) {
+    const channel = this.connection.createDataChannel(name, init)
 
     channel.onopen = () => {
-      this.#emitEvent('open', channel)
+      this.emit('open', channel)
     }
   }
 
   get local() {
-    return this.localDescription
+    return this.connection.localDescription
   }
 
-  setLocal(description?: RTCLocalSessionDescriptionInit) {
-    return super.setLocalDescription(description)
+  setLocal = async (description?: RTCLocalSessionDescriptionInit) => {
+    await this.connection.setLocalDescription(description)
+    return description
   }
 
-  setRemote(description: RTCSessionDescriptionInit) {
-    return super.setRemoteDescription(description)
+  setRemote = async (description: RTCSessionDescriptionInit) => {
+    return this.connection.setRemoteDescription(description)
   }
 
   addCandidate(candidate: RTCIceCandidate) {
-    return this.addIceCandidate(candidate)
-  }
-
-  on<Event extends keyof T>(event: Event, fn: Callback<T[Event]>) {
-    const events = this.#getEvents(event)
-    this.#events.set(event, events.add(fn))
-
-    const cancel = () => {
-      const events = this.#getEvents(event)
-      events.delete(fn)
-      this.#events.set(event, events)
-    }
-
-    return {cancel}
-  }
-
-  #emitEvent<Event extends keyof T>(event: Event, ...value: T[Event][]) {
-    const events = this.#events.get(event)
-    for (const event of events) event(...value)
-  }
-
-  #getEvents<Event extends keyof T>(event: Event): Set<Callback<T[Event]>> {
-    const events = this.#events.get(event)
-    return events ?? new Set()
+    return this.connection.addIceCandidate(candidate)
   }
 }

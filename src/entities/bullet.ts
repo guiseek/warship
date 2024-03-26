@@ -29,8 +29,8 @@ export class Bullet implements Entity {
       Math.sin(radians) * velocity
     )
 
-    this.position.add(this.velocity.clone().multiplyScalar(2))
-    this.head.add(this.velocity.clone().multiplyScalar(1))
+    this.position.add(this.velocity.clone().multiplyScalar(1))
+    this.head.add(this.velocity.clone().multiplyScalar(0.5))
   }
 
   update(ctx: CanvasRenderingContext2D) {

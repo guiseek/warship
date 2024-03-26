@@ -1,9 +1,13 @@
-import type {Callback} from '../interfaces'
+import type {ChannelEventMap} from '../interfaces'
 
-export class Channel {
-  #listeners = new Set<Callback<any>>()
+function getMessageData<T>(event: MessageEvent<string | T>): T {
+  return typeof event.data === 'string' ? JSON.parse(event.data) : event.data
+}
 
+export class Channel<T extends ChannelEventMap> {
   #channel
+
+  #subjects = new Map()
 
   state: RTCDataChannelState = 'closed'
 
@@ -16,18 +20,28 @@ export class Channel {
       this.state = 'open'
     }
 
-    this.#channel.onmessage = ({data}) => {
-      for (const listener of this.#listeners) {
-        listener(JSON.parse(data))
-      }
+    this.#channel.onmessage = (event) => {
+      this.#emitSubject('data', getMessageData(event))
     }
   }
 
-  on<T>(callback: Callback<T>) {
-    this.#listeners.add(callback)
+  send<T extends {toString(): string}>(value: T) {
+    if (this.#channel.readyState === 'open') {
+      this.#channel.send(value.toString())
+    }
   }
 
-  send<T extends {toString(): string}>(value: T) {
-    this.#channel.send(value.toString())
+  on<Type extends keyof T>(type: Type, cb: Callback<T[Type]>) {
+    const subject = this.#getSubject(type)
+    this.#subjects.set(type, subject.add(cb))
+  }
+
+  #emitSubject<Type extends keyof T>(type: Type, value: T[Type]) {
+    const subject = this.#getSubject(type)
+    for (const fn of subject) fn(value)
+  }
+
+  #getSubject<Type extends keyof T>(type: Type): Set<Callback<T[Type]>> {
+    return this.#subjects.get(type) ?? new Set()
   }
 }

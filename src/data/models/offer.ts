@@ -1,5 +1,5 @@
 export class Offer extends RTCSessionDescription {
-  constructor({sdp}: Omit<RTCSessionDescriptionInit, 'type'> = {}) {
+  constructor({sdp}: Pick<RTCSessionDescriptionInit, 'sdp'> = {}) {
     super({type: 'offer', sdp})
   }
 }

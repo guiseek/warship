@@ -27,8 +27,9 @@ export class Ship implements Entity {
 
   bullets: Bullet[] = []
   lastBullet = 0
-  bulletTime = 5
+  bulletTime = 1
 
+  decelerationRate = 0.02
   velocity = new Vector2()
   radVel = 0
 
@@ -114,11 +115,18 @@ export class Ship implements Entity {
      * Velocidade
      */
     const power = new Vector2(
-      Math.cos(this.radians) / (this.control.turbo ? 0.05 : 2.5),
-      Math.sin(this.radians) / (this.control.turbo ? 0.05 : 2.5)
+      Math.cos(this.radians) / (this.control.turbo ? 0.5 : 2.5),
+      Math.sin(this.radians) / (this.control.turbo ? 0.5 : 2.5)
     )
+
     if (this.control.forward) {
       this.velocity.add(power)
+    } else {
+      const deceleration = this.velocity
+        .clone()
+        .multiplyScalar(this.decelerationRate)
+
+      this.velocity.sub(deceleration)
     }
     if (this.control.backward) {
       this.velocity.sub(power)

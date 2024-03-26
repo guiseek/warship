@@ -1,5 +1,6 @@
-import type {Fn, Provider, ProviderKey, Type} from './types'
+import type {Provider, ProviderKey} from './types'
 import {token} from './token'
+import type {Fn, Type} from '../../types'
 
 const container = new Map()
 const relations = new Map()
@@ -14,25 +15,24 @@ const is = {
   string(value: unknown): value is string {
     return typeof value === 'string'
   },
-  class<T extends object>(value: unknown): value is Type<T> {
-    return this.function(value) && /^class\s/.test(value.toString())
+  class<T>(value: unknown): value is Type<T> {
+    return typeof value === 'function' && typeof value.prototype !== 'undefined'
   },
-  function<R extends object>(value: unknown): value is Fn<R> {
+  function<R>(value: unknown): value is Fn<R> {
     return typeof value === 'function'
   },
 }
 
 const provide = <T>({for: key, use}: Provider<T>) => {
   const concrete = use ?? key
-
-  if (is.function(concrete)) {
+  if (is.function<T>(concrete)) {
     const deps = relations.get(key)
 
     if (is.class(concrete)) {
-      return new concrete(...deps) as Type<T>
+      return new concrete(...deps)
     }
 
-    return concrete(...deps) as Fn<T>
+    return concrete(...deps)
   }
 
   return concrete as T

@@ -1,9 +1,11 @@
 import {Peer, Signaling, SignalingChannel, set, token} from './data'
+import {World} from './entities'
 import {addKey, create} from './utils'
 
 interface Config {
   canvas: HTMLCanvasElement
   ctx: CanvasRenderingContext2D
+  peer: RTCConfiguration
 }
 
 const canvas = create('canvas')
@@ -17,7 +19,7 @@ if (!ctx) {
 /**
  * Config
  */
-const configToken = token<Config>('config.token', {canvas, ctx})
+const configToken = token<Config>('config.token', {canvas, ctx, peer: {}})
 
 /**
  * Signaling
@@ -34,13 +36,24 @@ const peerToken = token<RTCConfiguration>('peer.token', {})
  */
 set(
   {
-    for: Peer,
+    for: RTCPeerConnection,
     deps: [peerToken],
+  },
+  {
+    for: Peer,
+    deps: [RTCPeerConnection],
   },
   {
     for: Signaling,
     use: SignalingChannel,
     deps: [signalingToken],
+  },
+  {
+    for: World,
+    use(config: Config) {
+      return new World(config.ctx)
+    },
+    deps: [configToken],
   }
 )
 
@@ -51,4 +64,4 @@ addKey('backward', ['ArrowDown', 'KeyS'])
 addKey('turbo', ['ControlLeft'])
 addKey('shoot', ['Space'])
 
-export {configToken, signalingToken, peerToken}
+export {configToken, signalingToken}

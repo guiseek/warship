@@ -1,19 +1,17 @@
-import type {MessageData, PeerEventMap, ShipData} from './data'
+import type {ChannelEventMap, MessageData, PeerEventMap} from './data'
 import {Peer, Signaling, Message, Channel} from './data'
 import {World, type Ship} from './entities'
 import {control} from './utils'
-import {configToken} from './config'
 import {use} from './data/di'
-import './style.scss'
+import './style.css'
+import './config'
 
 let ship: Ship
-let channel: Channel
 let peer: Peer<PeerEventMap>
+let channel: Channel<ChannelEventMap>
 let id = crypto.randomUUID()
 
-const config = use(configToken)
-
-const world = new World(config.ctx)
+const world = use(World)
 
 const signaling = use(Signaling<MessageData>)
 
@@ -26,11 +24,12 @@ function init() {
   })
 
   peer.on('negotiate', async () => {
-    await peer.setLocal()
+    await peer.collectOffer()
+    // await peer.setLocal()
     signaling.emit(new Message({description: peer.local}))
   })
 
-  peer.createChannel('chat', {negotiated: true, id: 0})
+  peer.prepareChannel('chat', {negotiated: true, id: 0})
 
   peer.on('open', (c) => {
     channel = new Channel(c)
@@ -45,7 +44,7 @@ function init() {
 
     control(ship.control)
 
-    channel.on<ShipData>((data) => {
+    channel.on('data', (data) => {
       world.moveShip(data)
     })
 
@@ -54,21 +53,17 @@ function init() {
 }
 
 signaling.on(async ({description, candidate}) => {
-  try {
-    if (description) {
-      await peer.setRemote(description)
+  if (description) {
+    await peer.setRemote(description)
 
-      // if we got an offer, we need to reply with an answer
-      if (description.type == 'offer') {
-        await peer.setLocal()
-        const description = peer.local
-        signaling.emit(new Message({description}))
-      }
-    } else if (candidate) {
-      await peer.addCandidate(candidate)
+    if (description.type == 'offer') {
+      // await peer.setLocal()
+      // const description = peer.local
+      const description = await peer.collectAnswer()
+      signaling.emit(new Message({description}))
     }
-  } catch (err) {
-    console.error(err)
+  } else if (candidate) {
+    await peer.addCandidate(candidate)
   }
 })
 

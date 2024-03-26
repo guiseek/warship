@@ -1,4 +1,4 @@
-export * from './callback';
+export * from './channel-event-map';
 export * from './message-data';
 export * from './peer-event-map';
 export * from './ship-control';
